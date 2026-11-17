@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Türkiye Adres Verisi — SQL Seed Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased">
+
+  <!-- Üst Başlık -->
+  <header class="border-b border-slate-800 bg-slate-900/70 backdrop-blur sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h1 class="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+          <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+          Türkiye Adres Verisi — SQL Seed Studio
+        </h1>
+        <p class="text-xs text-slate-400 mt-0.5">
+          81 İl, 973 İlçe ve Mahalle hiyerarşisi için özelleştirilebilir PostgreSQL, MSSQL ve MySQL seed üretici
+        </p>
+      </div>
+
+      <!-- Veri Kaynağı Durumu -->
+      <div class="flex items-center gap-3">
+        <div id="dataStatus" class="text-xs px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300">
+          JSON kaynağı bekleniyor...
+        </div>
+        <label class="cursor-pointer text-xs font-medium px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">
+          JSON Yükle
+          <input type="file" id="jsonFileInput" accept=".json" class="hidden" />
+        </label>
+      </div>
+    </div>
+  </header>
+
+  <!-- Ana İçerik -->
+  <main class="max-w-7xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- SOL PANEL: Ayarlar -->
+    <section class="lg:col-span-5 space-y-5">
+
+      <!-- 1. Veritabanı ve ID Tipi -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+        <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider">1. Motor & Primary Key Formatı</h2>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1.5">Veritabanı Motoru</label>
+            <select id="dbDialect" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+              <option value="postgres">PostgreSQL</option>
+              <option value="mssql">MSSQL (SQL Server)</option>
+              <option value="mysql">MySQL / MariaDB</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs text-slate-400 mb-1.5">ID (Primary Key) Tipi</label>
+            <select id="idType" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+              <option value="uuidv7">UUIDv7 (Zaman Sıralı GUID)</option>
+              <option value="uuidv4">UUIDv4 (Rastgele GUID)</option>
+              <option value="int">INT (1, 2, 3... Sıralı)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 pt-1">
+          <label class="flex items-center gap-2.5 text-sm text-slate-300 cursor-pointer select-none">
+            <input type="checkbox" id="includeDdl" class="w-4 h-4 rounded accent-emerald-500" />
+            <span>CREATE TABLE Ekle</span>
+          </label>
+
+          <label class="flex items-center gap-2.5 text-sm text-slate-300 cursor-pointer select-none">
+            <input type="checkbox" id="includeAudit" checked class="w-4 h-4 rounded accent-emerald-500" />
+            <span>CreatedAt / UpdatedAt</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 2. Tablo ve Kolon İsimleri -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider">2. Tablo & Kolon İsimleri</h2>
+          <div class="flex gap-1.5">
+            <button type="button" id="btnPascal" class="text-xs px-2.5 py-1 rounded bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/30">
+              PascalCase
+            </button>
+            <button type="button" id="btnSnake" class="text-xs px-2.5 py-1 rounded bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700">
+              snake_case
+            </button>
+          </div>
+        </div>
+
+        <!-- Tablo İsimleri -->
+        <div class="grid grid-cols-3 gap-2.5">
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">İller Tablosu</label>
+            <input type="text" id="tCities" value="Cities" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">İlçeler Tablosu</label>
+            <input type="text" id="tDistricts" value="Districts" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">Mahalleler Tablosu</label>
+            <input type="text" id="tNeighborhoods" value="Neighborhoods" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+        </div>
+
+        <!-- Kolon İsimleri -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2 border-t border-slate-800/80">
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">ID Kolonu</label>
+            <input type="text" id="cId" value="Id" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">City FK Kolonu</label>
+            <input type="text" id="cCityId" value="CityId" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">District FK Kolonu</label>
+            <input type="text" id="cDistrictId" value="DistrictId" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">Ad (Name) Kolonu</label>
+            <input type="text" id="cName" value="Name" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">Posta Kodu Kolonu</label>
+            <input type="text" id="cPostal" value="PostalCode" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">Batch Boyutu</label>
+            <input type="number" id="batchSize" value="500" min="50" max="1000" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+        </div>
+
+        <!-- Audit Kolon İsimleri -->
+        <div id="auditFieldsRow" class="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-800/80">
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">CreatedAt Kolonu</label>
+            <input type="text" id="cCreated" value="CreatedAt" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">UpdatedAt Kolonu</label>
+            <input type="text" id="cUpdated" value="UpdatedAt" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Çıktı Dosya Adı & İndirme -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+        <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider">3. Çıktı Dosyası</h2>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1.5">SQL Dosya Adı</label>
+          <input type="text" id="fileName" value="TurkeyAddressesSeed.sql" placeholder="TurkeyAddressesSeed.sql" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+        </div>
+
+        <button id="btnDownload" disabled class="w-full py-2.5 px-4 rounded-lg font-semibold text-sm bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white transition cursor-pointer disabled:cursor-not-allowed shadow-lg shadow-emerald-950/40">
+          SQL Dosyasını Oluştur ve İndir
+        </button>
+      </div>
+
+    </section>
+
+    <!-- SAĞ PANEL: Canlı SQL Önizleme & İstatistik -->
+    <section class="lg:col-span-7 flex flex-col bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-300">Canlı SQL Önizleme</span>
+          <span class="text-[11px] text-slate-500">(İlk kayıtlar üzerinden örnek çıktı)</span>
+        </div>
+        <div id="statsBadge" class="text-xs text-slate-400 font-mono">
+          0 İl · 0 İlçe · 0 Mahalle
+        </div>
+      </div>
+
+      <pre id="sqlPreview" class="flex-1 p-5 text-xs font-mono text-emerald-300/90 bg-slate-950 overflow-auto leading-relaxed min-h-[460px]">-- Veri kaynağı bekleniyor...
+-- Sağ üstteki "JSON Yükle" butonundan turkey_addresses.json dosyasını seçin.</pre>
+    </section>
+
+  </main>
+
+  <script>
+    let addressData = null;
+
+    // RFC 9562 Uyumlu Zaman Sıralı UUIDv7 Üretici
+    function generateUUIDv7() {
+      const ms = BigInt(Date.now());
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+
+      bytes[0] = Number((ms >> 40n) & 0xffn);
+      bytes[1] = Number((ms >> 32n) & 0xffn);
+      bytes[2] = Number((ms >> 24n) & 0xffn);
+      bytes[3] = Number((ms >> 16n) & 0xffn);
+      bytes[4] = Number((ms >> 8n) & 0xffn);
+      bytes[5] = Number(ms & 0xffn);
+
+      bytes[6] = (bytes[6] & 0x0f) | 0x70; // Version 7
+      bytes[8] = (bytes[8] & 0x3f) | 0x80; // Variant 10
+
+      const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+      return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+    }
+
+    function generateUUIDv4() {
+      return crypto.randomUUID();
+    }
+
+    function escapeSql(val) {
+      return String(val ?? '').trim().replace(/'/g, "''");
+    }
+
+    function getConfig() {
+      return {
+        dialect: document.getElementById('dbDialect').value,
+        idType: document.getElementById('idType').value,
+        includeDdl: document.getElementById('includeDdl').checked,
+        includeAudit: document.getElementById('includeAudit').checked,
+        tCities: document.getElementById('tCities').value.trim() || 'Cities',
+        tDistricts: document.getElementById('tDistricts').value.trim() || 'Districts',
+        tNeighborhoods: document.getElementById('tNeighborhoods').value.trim() || 'Neighborhoods',
+        cId: document.getElementById('cId').value.trim() || 'Id',
+        cCityId: document.getElementById('cCityId').value.trim() || 'CityId',
+        cDistrictId: document.getElementById('cDistrictId').value.trim() || 'DistrictId',
+        cName: document.getElementById('cName').value.trim() || 'Name',
+        cPostal: document.getElementById('cPostal').value.trim() || 'PostalCode',
+        cCreated: document.getElementById('cCreated').value.trim() || 'CreatedAt',
+        cUpdated: document.getElementById('cUpdated').value.trim() || 'UpdatedAt',
+        batchSize: Math.max(10, Math.min(1000, parseInt(document.getElementById('batchSize').value) || 500)),
+        fileName: document.getElementById('fileName').value.trim() || 'TurkeyAddressesSeed.sql'
+      };
+    }
+
+    function buildSql(isPreview = false) {
+      if (!addressData) return '';
+      const cfg = getConfig();
+
+      const q = (id) => {
+        if (cfg.dialect === 'postgres') return `"${id}"`;
+        if (cfg.dialect === 'mssql') return `[${id}]`;
+        return `\`${id}\``;
+      };
+
+      const utcNow = () => {
+        if (cfg.dialect === 'postgres') return "NOW() AT TIME ZONE 'UTC'";
+        if (cfg.dialect === 'mssql') return "GETUTCDATE()";
+        return "UTC_TIMESTAMP()";
+      };
+
+      const idColDef = () => {
+        if (cfg.idType === 'int') return 'INT';
+        if (cfg.dialect === 'postgres') return 'UUID';
+        if (cfg.dialect === 'mssql') return 'UNIQUEIDENTIFIER';
+        return 'CHAR(36)';
+      };
+
+      const dtColDef = () => {
+        if (cfg.dialect === 'postgres') return 'TIMESTAMPTZ';
+        if (cfg.dialect === 'mssql') return 'DATETIME2';
+        return 'DATETIME';
+      };
+
+      const strType = (len) => cfg.dialect === 'mssql' ? `NVARCHAR(${len})` : `VARCHAR(${len})`;
+
+      let seqCity = 0, seqDist = 0, seqNeigh = 0;
+      const nextId = (type) => {
+        if (cfg.idType === 'uuidv7') return `'${generateUUIDv7()}'`;
+        if (cfg.idType === 'uuidv4') return `'${generateUUIDv4()}'`;
+        if (type === 'city') return String(++seqCity);
+        if (type === 'district') return String(++seqDist);
+        return String(++seqNeigh);
+      };
+
+      const lines = [];
+      lines.push(`-- Turkey Address Seed Data (${cfg.dialect.toUpperCase()} | ID: ${cfg.idType.toUpperCase()})`);
+      if (cfg.dialect === 'mssql') lines.push('BEGIN TRANSACTION;\n');
+      else if (cfg.dialect === 'mysql') lines.push('START TRANSACTION;\n');
+      else lines.push('BEGIN;\n');
+
+      const tCities = q(cfg.tCities);
+      const tDistricts = q(cfg.tDistricts);
+      const tNeighborhoods = q(cfg.tNeighborhoods);
+      const cId = q(cfg.cId);
+      const cCityId = q(cfg.cCityId);
+      const cDistrictId = q(cfg.cDistrictId);
+      const cName = q(cfg.cName);
+      const cPostal = q(cfg.cPostal);
+      const cCreated = q(cfg.cCreated);
+      const cUpdated = q(cfg.cUpdated);
+
+      if (cfg.includeDdl) {
+        const auditDdl = cfg.includeAudit ? `,\n    ${cCreated} ${dtColDef()} NOT NULL,\n    ${cUpdated} ${dtColDef()} NULL` : '';
+        lines.push(`CREATE TABLE ${tCities} (\n    ${cId} ${idColDef()} PRIMARY KEY,\n    ${cName} ${strType(100)} NOT NULL${auditDdl}\n);\n`);
+        lines.push(`CREATE TABLE ${tDistricts} (\n    ${cId} ${idColDef()} PRIMARY KEY,\n    ${cCityId} ${idColDef()} NOT NULL,\n    ${cName} ${strType(100)} NOT NULL${auditDdl},\n    FOREIGN KEY (${cCityId}) REFERENCES ${tCities}(${cId}) ON DELETE CASCADE\n);\n`);
+        lines.push(`CREATE TABLE ${tNeighborhoods} (\n    ${cId} ${idColDef()} PRIMARY KEY,\n    ${cDistrictId} ${idColDef()} NOT NULL,\n    ${cName} ${strType(150)} NOT NULL,\n    ${cPostal} ${strType(10)} NOT NULL${auditDdl},\n    FOREIGN KEY (${cDistrictId}) REFERENCES ${tDistricts}(${cId}) ON DELETE CASCADE\n);\n`);
+      }
+
+      const cityCols = cfg.includeAudit ? `(${cId}, ${cName}, ${cCreated}, ${cUpdated})` : `(${cId}, ${cName})`;
+      const distCols = cfg.includeAudit ? `(${cId}, ${cCityId}, ${cName}, ${cCreated}, ${cUpdated})` : `(${cId}, ${cCityId}, ${cName})`;
+      const neighCols = cfg.includeAudit ? `(${cId}, ${cDistrictId}, ${cName}, ${cPostal}, ${cCreated}, ${cUpdated})` : `(${cId}, ${cDistrictId}, ${cName}, ${cPostal})`;
+      const nowExpr = utcNow();
+
+      const writeBatch = (values) => {
+        if (!values.length) return;
+        if (cfg.dialect === 'postgres') {
+          lines.push(`INSERT INTO ${tNeighborhoods} ${neighCols} VALUES\n${values.join(',\n')}\nON CONFLICT (${cId}) DO NOTHING;\n`);
+        } else if (cfg.dialect === 'mysql') {
+          lines.push(`INSERT IGNORE INTO ${tNeighborhoods} ${neighCols} VALUES\n${values.join(',\n')};\n`);
+        } else {
+          lines.push(`INSERT INTO ${tNeighborhoods} ${neighCols} VALUES\n${values.join(',\n')};\n`);
+        }
+      };
+
+      const sortedKeys = Object.keys(addressData).sort((a, b) => Number(a) - Number(b));
+      const keysToProcess = isPreview ? sortedKeys.slice(0, 1) : sortedKeys;
+
+      for (const ilKodu of keysToProcess) {
+        const ilObj = addressData[ilKodu];
+        if (!ilObj || !ilObj.il_adi) continue;
+
+        const cityId = nextId('city');
+        const cityVals = cfg.includeAudit
+          ? `(${cityId}, '${escapeSql(ilObj.il_adi)}', ${nowExpr}, NULL)`
+          : `(${cityId}, '${escapeSql(ilObj.il_adi)}')`;
+
+        if (cfg.dialect === 'postgres') lines.push(`INSERT INTO ${tCities} ${cityCols} VALUES ${cityVals} ON CONFLICT (${cId}) DO NOTHING;`);
+        else if (cfg.dialect === 'mysql') lines.push(`INSERT IGNORE INTO ${tCities} ${cityCols} VALUES ${cityVals};`);
+        else lines.push(`INSERT INTO ${tCities} ${cityCols} VALUES ${cityVals};`);
+
+        const districts = Object.values(ilObj.ilceler || {}).sort((a, b) => a.ilce_adi.localeCompare(b.ilce_adi, 'tr'));
+        const distList = isPreview ? districts.slice(0, 2) : districts;
+        let batch = [];
+
+        for (const dist of distList) {
+          const distId = nextId('district');
+          const distVals = cfg.includeAudit
+            ? `(${distId}, ${cityId}, '${escapeSql(dist.ilce_adi)}', ${nowExpr}, NULL)`
+            : `(${distId}, ${cityId}, '${escapeSql(dist.ilce_adi)}')`;
+
+          if (cfg.dialect === 'postgres') lines.push(`INSERT INTO ${tDistricts} ${distCols} VALUES ${distVals} ON CONFLICT (${cId}) DO NOTHING;`);
+          else if (cfg.dialect === 'mysql') lines.push(`INSERT IGNORE INTO ${tDistricts} ${distCols} VALUES ${distVals};`);
+          else lines.push(`INSERT INTO ${tDistricts} ${distCols} VALUES ${distVals};`);
+
+          const neighs = [...(dist.mahalleler || [])].sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+          const neighList = isPreview ? neighs.slice(0, 4) : neighs;
+
+          for (const n of neighList) {
+            const nId = nextId('neighborhood');
+            const nVal = cfg.includeAudit
+              ? `(${nId}, ${distId}, '${escapeSql(n.name)}', '${escapeSql(n.postal_code)}', ${nowExpr}, NULL)`
+              : `(${nId}, ${distId}, '${escapeSql(n.name)}', '${escapeSql(n.postal_code)}')`;
+            batch.push(nVal);
+
+            if (batch.length >= cfg.batchSize) {
+              writeBatch(batch);
+              batch = [];
+            }
+          }
+        }
+        writeBatch(batch);
+      }
+
+      if (isPreview) lines.push('-- ... (Önizleme kısaltıldı — tüm veri indirme dosyasında yer alır)');
+      lines.push('COMMIT;');
+      return lines.join('\n');
+    }
+
+    function updateStatsAndPreview() {
+      if (!addressData) return;
+      let cCount = 0, dCount = 0, nCount = 0;
+      for (const k of Object.keys(addressData)) {
+        const il = addressData[k];
+        if (!il || !il.il_adi) continue;
+        cCount++;
+        const dists = Object.values(il.ilceler || {});
+        dCount += dists.length;
+        for (const d of dists) nCount += (d.mahalleler || []).length;
+      }
+
+      document.getElementById('statsBadge').textContent = `${cCount} İl · ${dCount} İlçe · ${nCount.toLocaleString('tr-TR')} Mahalle`;
+      document.getElementById('dataStatus').className = 'text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300';
+      document.getElementById('dataStatus').textContent = `Veri Hazır (${cCount} İl yüklendi)`;
+      document.getElementById('btnDownload').disabled = false;
+      document.getElementById('sqlPreview').textContent = buildSql(true);
+    }
+
+    // Hazır İsimlendirme Presetleri
+    document.getElementById('btnPascal').addEventListener('click', () => {
+      document.getElementById('tCities').value = 'Cities';
+      document.getElementById('tDistricts').value = 'Districts';
+      document.getElementById('tNeighborhoods').value = 'Neighborhoods';
+      document.getElementById('cId').value = 'Id';
+      document.getElementById('cCityId').value = 'CityId';
+      document.getElementById('cDistrictId').value = 'DistrictId';
+      document.getElementById('cName').value = 'Name';
+      document.getElementById('cPostal').value = 'PostalCode';
+      document.getElementById('cCreated').value = 'CreatedAt';
+      document.getElementById('cUpdated').value = 'UpdatedAt';
+      updateStatsAndPreview();
+    });
+
+    document.getElementById('btnSnake').addEventListener('click', () => {
+      document.getElementById('tCities').value = 'cities';
+      document.getElementById('tDistricts').value = 'districts';
+      document.getElementById('tNeighborhoods').value = 'neighborhoods';
+      document.getElementById('cId').value = 'id';
+      document.getElementById('cCityId').value = 'city_id';
+      document.getElementById('cDistrictId').value = 'district_id';
+      document.getElementById('cName').value = 'name';
+      document.getElementById('cPostal').value = 'postal_code';
+      document.getElementById('cCreated').value = 'created_at';
+      document.getElementById('cUpdated').value = 'updated_at';
+      updateStatsAndPreview();
+    });
+
+    document.getElementById('includeAudit').addEventListener('change', (e) => {
+      document.getElementById('auditFieldsRow').style.opacity = e.target.checked ? '1' : '0.4';
+      updateStatsAndPreview();
+    });
+
+    // Tüm input değişikliklerinde canlı önizlemeyi güncelle
+    document.querySelectorAll('input, select').forEach(el => {
+      if (el.id !== 'jsonFileInput') {
+        el.addEventListener('input', updateStatsAndPreview);
+        el.addEventListener('change', updateStatsAndPreview);
+      }
+    });
+
+    // Dosya seçici ile JSON yükleme
+    document.getElementById('jsonFileInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          addressData = JSON.parse(ev.target.result);
+          updateStatsAndPreview();
+        } catch (err) {
+          alert('Geçersiz JSON dosyası: ' + err.message);
+        }
+      };
+      reader.readAsText(file, 'utf-8');
+    });
+
+    // Tam SQL dosyasını üret ve indir
+    document.getElementById('btnDownload').addEventListener('click', () => {
+      if (!addressData) return;
+      const btn = document.getElementById('btnDownload');
+      btn.textContent = 'Oluşturuluyor...';
+      btn.disabled = true;
+
+      setTimeout(() => {
+        const fullSql = buildSql(false);
+        let fileName = document.getElementById('fileName').value.trim() || 'TurkeyAddressesSeed.sql';
+        if (!fileName.toLowerCase().endsWith('.sql')) fileName += '.sql';
+
+        const blob = new Blob([fullSql], { type: 'application/sql;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        btn.textContent = 'SQL Dosyasını Oluştur ve İndir';
+        btn.disabled = false;
+      }, 50);
+    });
+
+    (async function autoLoadJson() {
+      for (const candidate of ['turkey_addresses.json']) {
+        try {
+          const res = await fetch(candidate);
+          if (res.ok) {
+            addressData = await res.json();
+            updateStatsAndPreview();
+            break;
+          }
+        } catch (_) {}
+      }
+    })();
+  </script>
+</body>
+</html>
